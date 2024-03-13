@@ -43,53 +43,10 @@ func (app *application) addActorHandler(w http.ResponseWriter, r *http.Request) 
 }
 
 /*
-Полностью обновляет информацию об актёре в базе данных через метод PUT.
-Если поле не передано, оно принимает значение по умолчанию.
-*/
-func (app *application) updateActorHandler(w http.ResponseWriter, r *http.Request) {
-	id, err := app.readIDParam(r)
-	if err != nil {
-		app.notFoundResponse(w, r)
-		return
-	}
-
-	var input struct {
-		FullName  string    `json:"full_name"`
-		Gender    string    `json:"gender"`
-		BirthDate time.Time `json:"birth_date"` // RFC3339
-	}
-
-	err = app.readJSON(w, r, &input)
-	if err != nil {
-		app.badRequestResponse(w, r, err)
-		return
-	}
-
-	actor := &data.Actor{} // TODO: Fetch the actor from the database
-
-	id = id // Use the id
-
-	/*
-		Новые данные об актере не проверяются и могут быть nil,
-		потому что по ТЗ у нас должна быть возможность удалять информацию об актёре.
-	*/
-	actor.FullName = input.FullName
-	actor.Gender = strings.ToLower(input.Gender)
-	actor.BirthDate = input.BirthDate
-
-	// TODO: Update the actor in the database
-
-	err = app.writeJSON(w, http.StatusOK, envelope{"actor": actor}, nil)
-	if err != nil {
-		app.serverErrorResponse(w, r, err)
-	}
-}
-
-/*
-Обновляет информацию об актёре в базе данных частично через метод PATCH.
+Обновляет информацию об актёре в базе данных частично или полностью через метод PATCH.
 Если поле не передано, оно сохраняет свое значение.
 */
-func (app *application) updateActorPartialHandler(w http.ResponseWriter, r *http.Request) {
+func (app *application) updateActorHandler(w http.ResponseWriter, r *http.Request) {
 	id, err := app.readIDParam(r)
 	if err != nil {
 		app.notFoundResponse(w, r)

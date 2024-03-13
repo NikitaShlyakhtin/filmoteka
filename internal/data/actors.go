@@ -3,6 +3,7 @@ package data
 import (
 	"filmoteka/internal/validator"
 	"time"
+	"unicode/utf8"
 )
 
 type Actor struct {
@@ -14,7 +15,7 @@ type Actor struct {
 
 func ValidateActor(v *validator.Validator, actor *Actor) {
 	v.Check(actor.FullName != "", "full_name", "must be provided")
-	v.Check(len(actor.FullName) < 500, "full_name", "must be less than 500 bytes")
+	v.Check(utf8.RuneCountInString(actor.FullName) <= 200, "full_name", "must be no more than 200 symbols")
 
 	v.Check(actor.Gender != "", "gender", "must be provided")
 	v.Check(actor.Gender == "male" || actor.Gender == "female", "gender", "must be either male or female")
