@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"filmoteka/internal/data"
 	"filmoteka/internal/validator"
 	"net/http"
@@ -34,7 +35,18 @@ func (app *application) addActorHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	// TODO: Add the actor to the database
+	err = app.models.Actors.Insert(actor)
+	if err != nil {
+		switch {
+		case errors.Is(err, data.ErrDuplicateName):
+			v.AddError("full_name", "actor with this full name already exists")
+			app.failedValidationResponse(w, r, v.Errors)
+		default:
+			app.serverErrorResponse(w, r, err)
+		}
+
+		return
+	}
 
 	err = app.writeJSON(w, http.StatusCreated, envelope{"actor": actor}, nil)
 	if err != nil {
@@ -65,9 +77,17 @@ func (app *application) updateActorHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	actor := &data.Actor{} // TODO: Fetch the actor from the database
+	actor, err := app.models.Actors.Get(id)
+	if err != nil {
+		switch {
+		case errors.Is(err, data.ErrRecordNotFound):
+			app.notFoundResponse(w, r)
+		default:
+			app.serverErrorResponse(w, r, err)
+		}
 
-	id = id // Use the id
+		return
+	}
 
 	if input.FullName != nil {
 		actor.FullName = *input.FullName
@@ -87,7 +107,44 @@ func (app *application) updateActorHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	// TODO: Update the actor in the database
+	err = app.models.Actors.Update(actor)
+	if err != nil {
+		switch {
+		case errors.Is(err, data.ErrDuplicateName):
+			v.AddError("full_name", "actor with this full name already exists")
+			app.failedValidationResponse(w, r, v.Errors)
+		default:
+			app.serverErrorResponse(w, r, err)
+		}
+
+		return
+	}
+
+	err = app.writeJSON(w, http.StatusOK, envelope{"actor": actor}, nil)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+	}
+}
+
+// Возвращает информацию об актере и о фильмах, в которых они снимались.
+func (app *application) getActorHandler(w http.ResponseWriter, r *http.Request) {
+	id, err := app.readIDParam(r)
+	if err != nil {
+		app.notFoundResponse(w, r)
+		return
+	}
+
+	actor, err := app.models.Actors.Get(id)
+	if err != nil {
+		switch {
+		case errors.Is(err, data.ErrRecordNotFound):
+			app.notFoundResponse(w, r)
+		default:
+			app.serverErrorResponse(w, r, err)
+		}
+
+		return
+	}
 
 	err = app.writeJSON(w, http.StatusOK, envelope{"actor": actor}, nil)
 	if err != nil {
@@ -97,9 +154,13 @@ func (app *application) updateActorHandler(w http.ResponseWriter, r *http.Reques
 
 // Возвращает список актёров с информацией о фильмах, в которых они снимались.
 func (app *application) getActorsHandler(w http.ResponseWriter, r *http.Request) {
-	actors := []*data.Actor{} // TODO: Fetch the actors from the database
+	actors, err := app.models.Actors.GetAll()
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
 
-	err := app.writeJSON(w, http.StatusOK, envelope{"actors": actors}, nil)
+	err = app.writeJSON(w, http.StatusOK, envelope{"actors": actors}, nil)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
 	}
@@ -113,9 +174,17 @@ func (app *application) deleteActorHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	// TODO: Delete the actor from the database
+	err = app.models.Actors.Delete(id)
+	if err != nil {
+		switch {
+		case errors.Is(err, data.ErrRecordNotFound):
+			app.notFoundResponse(w, r)
+		default:
+			app.serverErrorResponse(w, r, err)
+		}
 
-	id = id // Use the id
+		return
+	}
 
 	err = app.writeJSON(w, http.StatusOK, envelope{"message": "actor successfully deleted"}, nil)
 	if err != nil {

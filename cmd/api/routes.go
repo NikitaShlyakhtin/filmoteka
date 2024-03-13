@@ -15,6 +15,7 @@ func (app *application) routes() http.Handler {
 	router.HandlerFunc(http.MethodGet, "/healthcheck", app.healthcheckHandler)
 
 	router.HandlerFunc(http.MethodPost, "/actors", app.addActorHandler)
+	router.HandlerFunc(http.MethodGet, "/actors/:id", app.getActorHandler)
 	router.HandlerFunc(http.MethodPatch, "/actors/:id", app.updateActorHandler)
 	router.HandlerFunc(http.MethodDelete, "/actors/:id", app.deleteActorHandler)
 	router.HandlerFunc(http.MethodGet, "/actors", app.getActorsHandler)

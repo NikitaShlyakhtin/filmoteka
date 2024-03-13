@@ -1,17 +1,22 @@
 package data
 
 import (
+	"database/sql"
 	"filmoteka/internal/validator"
 	"unicode/utf8"
 )
 
 type Movie struct {
-	ID          int    `json:"id"`
-	Title       string `json:"title"`
-	Description string `json:"description,omitempty"`
-	ReleaseDate string `json:"release_date"` // RFC3339
-	Rating      int    `json:"rating,omitempty"`
-	Actors      []int  `json:"actors"`
+	ID          int     `json:"id"`
+	Title       string  `json:"title"`
+	Description string  `json:"description,omitempty"`
+	ReleaseDate string  `json:"release_date"` // RFC3339
+	Rating      float32 `json:"rating"`
+	Actors      []int   `json:"actors"`
+}
+
+type MovieModel struct {
+	DB *sql.DB
 }
 
 func ValidateMovie(v *validator.Validator, movie *Movie) {
