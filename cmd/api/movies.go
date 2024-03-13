@@ -1,6 +1,8 @@
 package main
 
-import "net/http"
+import (
+	"net/http"
+)
 
 // Добавляет информацию о фильме в базу данных.
 func (app *application) addMovieHandler(w http.ResponseWriter, r *http.Request) {

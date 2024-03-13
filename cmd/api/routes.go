@@ -28,5 +28,5 @@ func (app *application) routes() http.Handler {
 
 	router.HandlerFunc(http.MethodGet, "/search", app.searchHandler)
 
-	return router
+	return app.recoverPanic(app.rateLimit(app.logRequest(router)))
 }
