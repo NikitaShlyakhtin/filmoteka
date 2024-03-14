@@ -9,7 +9,7 @@ CREATE TABLE Actors (
 
 CREATE TABLE Movies (
     movie_id SERIAL PRIMARY KEY,
-    title VARCHAR(150) NOT NULL,
+    title VARCHAR(150) UNIQUE NOT NULL,
     description VARCHAR(1000) NOT NULL,
     release_date DATE NOT NULL,
     rating DECIMAL(3,1) NOT NULL CHECK (rating >= 0 AND rating <= 10)

@@ -61,30 +61,15 @@ func (m ActorModel) Insert(actor *Actor) error {
 	return nil
 }
 
+/*
+Удаляет актера и все его связи с фильмами из таблицы Movies_actors,
+но не удаляет сами фильмы из таблицы Movies.
+*/
 func (m ActorModel) Delete(actor_id int64) error {
-	query := `
-		SELECT
-			actor_id
-		FROM 
-			Actors
-		WHERE
-			actor_id = $1
-	`
-
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	_, err := m.DB.ExecContext(ctx, query, actor_id)
-	if err != nil {
-		switch {
-		case errors.Is(err, sql.ErrNoRows):
-			return ErrRecordNotFound
-		default:
-			return err
-		}
-	}
-
-	query = `
+	query := `
 		DELETE FROM 
 			Actors
 		WHERE

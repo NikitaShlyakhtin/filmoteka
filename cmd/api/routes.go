@@ -21,11 +21,12 @@ func (app *application) routes() http.Handler {
 	router.HandlerFunc(http.MethodGet, "/actors", app.getActorsHandler)
 
 	router.HandlerFunc(http.MethodPost, "/movies", app.addMovieHandler)
+	router.HandlerFunc(http.MethodGet, "/movies/:id", app.getMovieHandler)
 	router.HandlerFunc(http.MethodPatch, "/movies/:id", app.updateMovieHandler)
 	router.HandlerFunc(http.MethodDelete, "/movies/:id", app.deleteMovieHandler)
 	router.HandlerFunc(http.MethodGet, "/movies", app.getMoviesHandler)
 
-	router.HandlerFunc(http.MethodGet, "/search", app.searchHandler)
+	router.HandlerFunc(http.MethodGet, "/search", app.searchMovieHandler)
 
 	return app.recoverPanic(app.rateLimit(app.logRequest(router)))
 }

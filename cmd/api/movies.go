@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"filmoteka/internal/data"
 	"filmoteka/internal/validator"
 	"net/http"
@@ -36,7 +37,21 @@ func (app *application) addMovieHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	// TODO: Add the movie to the database
+	err = app.models.Movies.Insert(movie)
+	if err != nil {
+		switch {
+		case errors.Is(err, data.ErrDuplicateName):
+			v.AddError("title", "movie with this title already exists")
+			app.failedValidationResponse(w, r, v.Errors)
+		case errors.Is(err, data.ErrActorsNotFound):
+			v.AddError("actors", "one or more actor IDs do not exist")
+			app.failedValidationResponse(w, r, v.Errors)
+		default:
+			app.serverErrorResponse(w, r, err)
+		}
+
+		return
+	}
 
 	err = app.writeJSON(w, http.StatusCreated, envelope{"movie": movie}, nil)
 	if err != nil {
@@ -69,9 +84,15 @@ func (app *application) updateMovieHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	movie := &data.Movie{} // TODO: Fetch the movie from the database
-
-	id = id // Use the id
+	movie, err := app.models.Movies.Get(id)
+	if err != nil {
+		switch {
+		case errors.Is(err, data.ErrRecordNotFound):
+			app.notFoundResponse(w, r)
+		default:
+			app.serverErrorResponse(w, r, err)
+		}
+	}
 
 	if input.Title != nil {
 		movie.Title = *input.Title
@@ -99,7 +120,45 @@ func (app *application) updateMovieHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	// TODO: Update the movie in the database
+	err = app.models.Movies.Update(*movie)
+	if err != nil {
+		switch {
+		case errors.Is(err, data.ErrDuplicateName):
+			v.AddError("title", "movie with this title already exists")
+			app.failedValidationResponse(w, r, v.Errors)
+		case errors.Is(err, data.ErrActorsNotFound):
+			v.AddError("actors", "one or more actor IDs do not exist")
+			app.failedValidationResponse(w, r, v.Errors)
+		default:
+			app.serverErrorResponse(w, r, err)
+		}
+
+		return
+	}
+
+	err = app.writeJSON(w, http.StatusOK, envelope{"movie": movie}, nil)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+	}
+}
+
+func (app *application) getMovieHandler(w http.ResponseWriter, r *http.Request) {
+	id, err := app.readIDParam(r)
+	if err != nil {
+		app.notFoundResponse(w, r)
+		return
+	}
+
+	movie, err := app.models.Movies.Get(id)
+	if err != nil {
+		switch {
+		case errors.Is(err, data.ErrRecordNotFound):
+			app.notFoundResponse(w, r)
+		default:
+			app.serverErrorResponse(w, r, err)
+		}
+		return
+	}
 
 	err = app.writeJSON(w, http.StatusOK, envelope{"movie": movie}, nil)
 	if err != nil {
@@ -125,9 +184,13 @@ func (app *application) getMoviesHandler(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	movies := []*data.Movie{} // TODO: Fetch the movies from the database
+	movies, err := app.models.Movies.GetAll(input.Filters)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
 
-	err := app.writeJSON(w, http.StatusOK, envelope{"movies": movies}, nil)
+	err = app.writeJSON(w, http.StatusOK, envelope{"movies": movies}, nil)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
 	}
@@ -141,11 +204,36 @@ func (app *application) deleteMovieHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	// TODO: Delete the movie from the database
-
-	id = id // Use the id
+	err = app.models.Movies.Delete(id)
+	if err != nil {
+		switch {
+		case errors.Is(err, data.ErrRecordNotFound):
+			app.notFoundResponse(w, r)
+		default:
+			app.serverErrorResponse(w, r, err)
+		}
+		return
+	}
 
 	err = app.writeJSON(w, http.StatusOK, envelope{"message": "movie successfully deleted"}, nil)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+	}
+}
+
+func (app *application) searchMovieHandler(w http.ResponseWriter, r *http.Request) {
+	qs := r.URL.Query()
+
+	title := app.readString(qs, "title", "")
+	actor := app.readString(qs, "actor", "")
+
+	movies, err := app.models.Movies.Search(title, actor)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+
+	err = app.writeJSON(w, http.StatusOK, envelope{"movies": movies}, nil)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
 	}
