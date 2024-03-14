@@ -1,10 +1,15 @@
 package main
 
 import (
+	"encoding/base64"
+	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
+
+	"filmoteka/internal/data"
 
 	"github.com/tomasen/realip"
 	"golang.org/x/time/rate"
@@ -103,4 +108,96 @@ func (app *application) rateLimit(next http.Handler) http.Handler {
 
 		next.ServeHTTP(w, r)
 	})
+}
+
+func (app *application) authenticate(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Add("Vary", "Authorization")
+
+		authorizationHeader := r.Header.Get("Authorization")
+
+		if authorizationHeader == "" {
+			r = app.contextSetUser(r, data.AnonymousUser)
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		headerParts := strings.Split(authorizationHeader, " ")
+		if len(headerParts) != 2 || headerParts[0] != "Basic" {
+			app.invalidAuthenticationCredentialsResponse(w, r)
+			return
+		}
+
+		encodedCredentials := headerParts[1]
+
+		decodedCredentials, err := base64.StdEncoding.DecodeString(encodedCredentials)
+		if err != nil {
+			app.invalidAuthenticationCredentialsResponse(w, r)
+			return
+		}
+
+		credentialsParts := strings.Split(string(decodedCredentials), ":")
+		if len(credentialsParts) != 2 {
+			app.invalidAuthenticationCredentialsResponse(w, r)
+			return
+		}
+
+		username := credentialsParts[0]
+		password := credentialsParts[1]
+
+		user, err := app.models.Users.Get(username)
+		if err != nil {
+			switch {
+			case errors.Is(err, data.ErrRecordNotFound):
+				app.invalidCredentialsResponse(w, r)
+			default:
+				app.serverErrorResponse(w, r, err)
+			}
+
+			return
+		}
+
+		match, err := user.Password.Matches(password)
+		if err != nil {
+			app.serverErrorResponse(w, r, err)
+			return
+		}
+
+		if !match {
+			app.invalidCredentialsResponse(w, r)
+			return
+		}
+
+		r = app.contextSetUser(r, user)
+
+		next.ServeHTTP(w, r)
+	})
+}
+
+func (app *application) requireAuthenticatedUser(next http.HandlerFunc) http.HandlerFunc {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		user := app.contextGetUser(r)
+
+		if user.IsAnonymous() {
+			app.authenticationRequiredResponse(w, r)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
+}
+
+func (app *application) requireRoleAdmin(next http.HandlerFunc) http.HandlerFunc {
+	fn := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		user := app.contextGetUser(r)
+
+		if user.Role != "admin" {
+			app.notPermittedResponse(w, r)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
+
+	return app.requireAuthenticatedUser(fn)
 }
