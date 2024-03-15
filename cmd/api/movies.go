@@ -7,7 +7,36 @@ import (
 	"net/http"
 )
 
-// Добавляет информацию о фильме в базу данных.
+type MovieInput struct {
+	Title       *string  `json:"title"`
+	Description *string  `json:"description"`
+	ReleaseDate *string  `json:"release_date"` // RFC3339
+	Rating      *float32 `json:"rating"`
+	Actors      *[]int   `json:"actors"`
+}
+
+type MovieEnvelope struct {
+	Movie data.Movie `json:"movie"`
+}
+
+type MoviesEnvelope struct {
+	Movie []data.Movie `json:"movie"`
+}
+
+// @Summary Add a new movie
+// @Description Adds a new movie to the database. The request body should include the movie's title, description, release date, rating, and a list of actor IDs.
+// @Tags Movies
+// @Accept json
+// @Produce json
+// @Param input body MovieInput true "Movie data"
+// @Success 201 {object} MovieEnvelope "Movie successfully created"
+// @Failure 400 {object} errorResponse "Client error"
+// @Failure 401 {object} errorResponse "Unauthorized"
+// @Failure 403 {object} errorResponse "Forbidden"
+// @Failure 422 {object} errorResponse "Validation error"
+// @Failure 500 {object} errorResponse "Internal server error"
+// @Security BasicAuth
+// @Router /movies [post]
 func (app *application) addMovieHandler(w http.ResponseWriter, r *http.Request) {
 	var input struct {
 		Title       string  `json:"title"`
@@ -59,10 +88,22 @@ func (app *application) addMovieHandler(w http.ResponseWriter, r *http.Request) 
 	}
 }
 
-/*
-Обновляет информацию о фильме в базе данных частично или полностью через метод PATCH.
-Если поле не передано, оно сохраняет свое значение.
-*/
+// @Summary Update a movie
+// @Description Updates the information of a specific movie in the database. This can be a partial or full update. If a field is not provided in the request body, the current value of that field will be retained.
+// @Tags Movies
+// @Accept json
+// @Produce json
+// @Param id path int true "Movie ID"
+// @Param input body MovieInput true "Movie data"
+// @Success 200 {object} MovieEnvelope "Movie successfully updated"
+// @Failure 400 {object} errorResponse "Client error"
+// @Failure 401 {object} errorResponse "Unauthorized"
+// @Failure 403 {object} errorResponse "Forbidden"
+// @Failure 404 {object} errorResponse "Movie not found"
+// @Failure 422 {object} errorResponse "Validation error"
+// @Failure 500 {object} errorResponse "Internal server error"
+// @Security BasicAuth
+// @Router /movies/{id} [patch]
 func (app *application) updateMovieHandler(w http.ResponseWriter, r *http.Request) {
 	id, err := app.readIDParam(r)
 	if err != nil {
@@ -92,6 +133,8 @@ func (app *application) updateMovieHandler(w http.ResponseWriter, r *http.Reques
 		default:
 			app.serverErrorResponse(w, r, err)
 		}
+
+		return
 	}
 
 	if input.Title != nil {
@@ -142,6 +185,17 @@ func (app *application) updateMovieHandler(w http.ResponseWriter, r *http.Reques
 	}
 }
 
+// @Summary Get a movie
+// @Description Retrieves detailed information about a specific movie, including its title, description, release date, rating, and a list of actor IDs.
+// @Tags Movies
+// @Produce json
+// @Param id path int true "Movie ID"
+// @Success 200 {object} MovieEnvelope "Movie data"
+// @Failure 401 {object} errorResponse "Unauthorized"
+// @Failure 404 {object} errorResponse "Movie not found"
+// @Failure 500 {object} errorResponse "Internal server error"
+// @Security BasicAuth
+// @Router /movies/{id} [get]
 func (app *application) getMovieHandler(w http.ResponseWriter, r *http.Request) {
 	id, err := app.readIDParam(r)
 	if err != nil {
@@ -166,7 +220,17 @@ func (app *application) getMovieHandler(w http.ResponseWriter, r *http.Request) 
 	}
 }
 
-// Возвращает список фильмов с возможностью сортировки и фильтрации.
+// @Summary Get all movies
+// @Description Retrieves a list of all movies in the database. Each entry includes the movie's title, description, release date, rating, and a list of actor IDs. The result can be sorted by title, rating, or release date, in ascending or descending order. The default sort order is by rating in descending order.
+// @Tags Movies
+// @Produce json
+// @Param sort query string false "Sort order: title, rating, release_date, -title, -rating, -release_date"
+// @Success 200 {object} MoviesEnvelope "List of movies"
+// @Failure 401 {object} errorResponse "Unauthorized"
+// @Failure 422 {object} errorResponse "Validation error"
+// @Failure 500 {object} errorResponse "Internal server error"
+// @Security BasicAuth
+// @Router /movies [get]
 func (app *application) getMoviesHandler(w http.ResponseWriter, r *http.Request) {
 	var input struct {
 		data.Filters
@@ -196,7 +260,18 @@ func (app *application) getMoviesHandler(w http.ResponseWriter, r *http.Request)
 	}
 }
 
-// Удаляет информацию о фильме из базы данных.
+// @Summary Delete a movie
+// @Description Deletes a specific movie from the database. All information about the movie, including its title, description, release date, rating, and list of actor IDs, will be permanently removed.
+// @Tags Movies
+// @Produce json
+// @Param id path int true "Movie ID"
+// @Success 200 {object} MessageEnvelope "Deletion message"
+// @Failure 401 {object} errorResponse "Unauthorized"
+// @Failure 404 {object} errorResponse "Movie not found"
+// @Failure 403 {object} errorResponse "Forbidden"
+// @Failure 500 {object} errorResponse "Internal server error"
+// @Security BasicAuth
+// @Router /movies/{id} [delete]
 func (app *application) deleteMovieHandler(w http.ResponseWriter, r *http.Request) {
 	id, err := app.readIDParam(r)
 	if err != nil {
@@ -221,6 +296,17 @@ func (app *application) deleteMovieHandler(w http.ResponseWriter, r *http.Reques
 	}
 }
 
+// @Summary Search for movies
+// @Description Searches for movies by part of the title or actor name. The query parameters should include the title and/or actor.
+// @Tags Search
+// @Produce json
+// @Param title query string false "Movie title"
+// @Param actor query string false "Actor name"
+// @Success 200 {object} MoviesEnvelope "List of movies"
+// @Failure 401 {object} errorResponse "Unauthorized"
+// @Failure 500 {object} errorResponse "Internal server error"
+// @Security BasicAuth
+// @Router /search [get]
 func (app *application) searchMovieHandler(w http.ResponseWriter, r *http.Request) {
 	qs := r.URL.Query()
 

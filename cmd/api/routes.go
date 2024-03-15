@@ -4,10 +4,15 @@ import (
 	"net/http"
 
 	"github.com/julienschmidt/httprouter"
+	httpSwagger "github.com/swaggo/http-swagger" // http-swagger middleware
 )
 
 func (app *application) routes() http.Handler {
 	router := httprouter.New()
+
+	router.HandlerFunc(http.MethodGet, "/swagger/*filepath", httpSwagger.Handler(
+		httpSwagger.URL("http://localhost:4000/swagger/doc.json"), //The url pointing to API definition
+	))
 
 	router.NotFound = http.HandlerFunc(app.notFoundResponse)
 	router.MethodNotAllowed = http.HandlerFunc(app.methodNotAllowedResponse)
@@ -30,5 +35,5 @@ func (app *application) routes() http.Handler {
 
 	router.HandlerFunc(http.MethodGet, "/search", app.requireAuthenticatedUser(app.searchMovieHandler))
 
-	return app.recoverPanic(app.rateLimit(app.logRequest(app.authenticate(router))))
+	return app.recoverPanic(app.logRequest(app.rateLimit(app.authenticate(router))))
 }

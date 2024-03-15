@@ -1,0 +1,652 @@
+basePath: /
+definitions:
+  data.Actor:
+    properties:
+      birth_date:
+        description: RFC3339
+        type: string
+      full_name:
+        type: string
+      gender:
+        type: string
+      id:
+        type: integer
+      movies:
+        items:
+          type: integer
+        type: array
+    type: object
+  data.Movie:
+    properties:
+      actors:
+        items:
+          type: integer
+        type: array
+      description:
+        type: string
+      id:
+        type: integer
+      rating:
+        type: number
+      release_date:
+        description: RFC3339
+        type: string
+      title:
+        type: string
+    type: object
+  data.User:
+    properties:
+      id:
+        type: integer
+      name:
+        type: string
+      role:
+        type: string
+    type: object
+  main.ActorEnvelope:
+    properties:
+      actor:
+        $ref: '#/definitions/data.Actor'
+    type: object
+  main.ActorInput:
+    properties:
+      birth_date:
+        description: RFC3339
+        type: string
+      full_name:
+        type: string
+      gender:
+        type: string
+    type: object
+  main.ActorsEnvelope:
+    properties:
+      actor:
+        items:
+          $ref: '#/definitions/data.Actor'
+        type: array
+    type: object
+  main.CreateUserInput:
+    properties:
+      name:
+        type: string
+      password:
+        type: string
+    required:
+    - name
+    - password
+    type: object
+  main.HealthCheckResponse:
+    properties:
+      status:
+        type: string
+      system_info:
+        properties:
+          environment:
+            type: string
+        type: object
+    type: object
+  main.MessageEnvelope:
+    properties:
+      message:
+        type: string
+    type: object
+  main.MovieEnvelope:
+    properties:
+      movie:
+        $ref: '#/definitions/data.Movie'
+    type: object
+  main.MovieInput:
+    properties:
+      actors:
+        items:
+          type: integer
+        type: array
+      description:
+        type: string
+      rating:
+        type: number
+      release_date:
+        description: RFC3339
+        type: string
+      title:
+        type: string
+    type: object
+  main.MoviesEnvelope:
+    properties:
+      movie:
+        items:
+          $ref: '#/definitions/data.Movie'
+        type: array
+    type: object
+  main.UserEnvelope:
+    properties:
+      user:
+        $ref: '#/definitions/data.User'
+    type: object
+  main.errorResponse:
+    properties:
+      error:
+        type: string
+    type: object
+host: localhost:4000
+info:
+  contact:
+    email: nikitshliahtin@mail.ru
+    name: Nikita Shlyakhtin
+    url: https://t.me/NikitaShlyakhtin
+  description: API для бэкенд приложения "Фильмотека" для стажировки в VK по направлению
+    Go-разработка.
+  title: Filmoteka API
+  version: "1.0"
+paths:
+  /actors:
+    get:
+      consumes:
+      - application/json
+      description: Retrieves a list of all actors in the database. Each entry includes
+        the actor's full name, gender, birth date, and a list of movies they have
+        appeared in. If the actor doesn't appear in any movies, the list will be empty.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Actors data
+          schema:
+            $ref: '#/definitions/main.ActorsEnvelope'
+        "400":
+          description: Client error
+          schema:
+            $ref: '#/definitions/main.errorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/main.errorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/main.errorResponse'
+      security:
+      - BasicAuth: []
+      summary: Get actors
+      tags:
+      - Actors
+    post:
+      consumes:
+      - application/json
+      description: Adds a new actor to the database. The request body should include
+        the actor's full name, gender, and birth date. Once the actor is added, he
+        can be associated with movies.
+      parameters:
+      - description: Actor data
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/main.ActorInput'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Actor successfully created
+          schema:
+            $ref: '#/definitions/main.ActorEnvelope'
+        "400":
+          description: Client error
+          schema:
+            $ref: '#/definitions/main.errorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/main.errorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/main.errorResponse'
+        "422":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/main.errorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/main.errorResponse'
+      security:
+      - BasicAuth: []
+      summary: Add new actor
+      tags:
+      - Actors
+  /actors/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Deletes a specific actor from the database. All information about
+        the actor, including their full name, gender, birth date, and list of movies,
+        will be permanently removed.
+      parameters:
+      - description: Actor ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: Actor successfully deleted
+          schema:
+            $ref: '#/definitions/main.MessageEnvelope'
+        "400":
+          description: Client error
+          schema:
+            $ref: '#/definitions/main.errorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/main.errorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/main.errorResponse'
+        "404":
+          description: Actor not found
+          schema:
+            $ref: '#/definitions/main.errorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/main.errorResponse'
+      security:
+      - BasicAuth: []
+      summary: Delete actor
+      tags:
+      - Actors
+    get:
+      consumes:
+      - application/json
+      description: Retrieves information about specific actor from the database, including
+        actor's full name, gender, birth date, and a list of movies IDs he have appeared
+        in. If the actor doesn't appear in any movies, the list will be empty.
+      parameters:
+      - description: Actor ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Actor data
+          schema:
+            $ref: '#/definitions/main.ActorEnvelope'
+        "400":
+          description: Client error
+          schema:
+            $ref: '#/definitions/main.errorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/main.errorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/main.errorResponse'
+        "404":
+          description: Actor not found
+          schema:
+            $ref: '#/definitions/main.errorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/main.errorResponse'
+      security:
+      - BasicAuth: []
+      summary: Get actor by ID
+      tags:
+      - Actors
+    patch:
+      consumes:
+      - application/json
+      description: Updates the information of a specific actor in the database. This
+        can be a partial or full update. If a field is not provided in the request
+        body, the current value of that field will be retained.
+      parameters:
+      - description: Actor ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Actor data
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/main.ActorInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Actor successfully updated
+          schema:
+            $ref: '#/definitions/main.ActorEnvelope'
+        "400":
+          description: Client error
+          schema:
+            $ref: '#/definitions/main.errorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/main.errorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/main.errorResponse'
+        "404":
+          description: Actor not found
+          schema:
+            $ref: '#/definitions/main.errorResponse'
+        "422":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/main.errorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/main.errorResponse'
+      security:
+      - BasicAuth: []
+      summary: Update actor
+      tags:
+      - Actors
+  /healthcheck:
+    get:
+      consumes:
+      - application/json
+      description: Check the health status of the application
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/main.HealthCheckResponse'
+      summary: Healthcheck
+      tags:
+      - Healthcheck
+  /movies:
+    get:
+      description: Retrieves a list of all movies in the database. Each entry includes
+        the movie's title, description, release date, rating, and a list of actor
+        IDs. The result can be sorted by title, rating, or release date, in ascending
+        or descending order. The default sort order is by rating in descending order.
+      parameters:
+      - description: 'Sort order: title, rating, release_date, -title, -rating, -release_date'
+        in: query
+        name: sort
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of movies
+          schema:
+            $ref: '#/definitions/main.MoviesEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/main.errorResponse'
+        "422":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/main.errorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/main.errorResponse'
+      security:
+      - BasicAuth: []
+      summary: Get all movies
+      tags:
+      - Movies
+    post:
+      consumes:
+      - application/json
+      description: Adds a new movie to the database. The request body should include
+        the movie's title, description, release date, rating, and a list of actor
+        IDs.
+      parameters:
+      - description: Movie data
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/main.MovieInput'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Movie successfully created
+          schema:
+            $ref: '#/definitions/main.MovieEnvelope'
+        "400":
+          description: Client error
+          schema:
+            $ref: '#/definitions/main.errorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/main.errorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/main.errorResponse'
+        "422":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/main.errorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/main.errorResponse'
+      security:
+      - BasicAuth: []
+      summary: Add a new movie
+      tags:
+      - Movies
+  /movies/{id}:
+    delete:
+      description: Deletes a specific movie from the database. All information about
+        the movie, including its title, description, release date, rating, and list
+        of actor IDs, will be permanently removed.
+      parameters:
+      - description: Movie ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Deletion message
+          schema:
+            $ref: '#/definitions/main.MessageEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/main.errorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/main.errorResponse'
+        "404":
+          description: Movie not found
+          schema:
+            $ref: '#/definitions/main.errorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/main.errorResponse'
+      security:
+      - BasicAuth: []
+      summary: Delete a movie
+      tags:
+      - Movies
+    get:
+      description: Retrieves detailed information about a specific movie, including
+        its title, description, release date, rating, and a list of actor IDs.
+      parameters:
+      - description: Movie ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Movie data
+          schema:
+            $ref: '#/definitions/main.MovieEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/main.errorResponse'
+        "404":
+          description: Movie not found
+          schema:
+            $ref: '#/definitions/main.errorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/main.errorResponse'
+      security:
+      - BasicAuth: []
+      summary: Get a movie
+      tags:
+      - Movies
+    patch:
+      consumes:
+      - application/json
+      description: Updates the information of a specific movie in the database. This
+        can be a partial or full update. If a field is not provided in the request
+        body, the current value of that field will be retained.
+      parameters:
+      - description: Movie ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Movie data
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/main.MovieInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Movie successfully updated
+          schema:
+            $ref: '#/definitions/main.MovieEnvelope'
+        "400":
+          description: Client error
+          schema:
+            $ref: '#/definitions/main.errorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/main.errorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/main.errorResponse'
+        "404":
+          description: Movie not found
+          schema:
+            $ref: '#/definitions/main.errorResponse'
+        "422":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/main.errorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/main.errorResponse'
+      security:
+      - BasicAuth: []
+      summary: Update a movie
+      tags:
+      - Movies
+  /search:
+    get:
+      description: Searches for movies by part of the title or actor name. The query
+        parameters should include the title and/or actor.
+      parameters:
+      - description: Movie title
+        in: query
+        name: title
+        type: string
+      - description: Actor name
+        in: query
+        name: actor
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of movies
+          schema:
+            $ref: '#/definitions/main.MoviesEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/main.errorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/main.errorResponse'
+      security:
+      - BasicAuth: []
+      summary: Search for movies
+      tags:
+      - Search
+  /users:
+    post:
+      consumes:
+      - application/json
+      description: Create a new user
+      parameters:
+      - description: User data
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/main.CreateUserInput'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: User created successfully
+          schema:
+            $ref: '#/definitions/main.UserEnvelope'
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/main.errorResponse'
+        "422":
+          description: Validation failed
+          schema:
+            $ref: '#/definitions/main.errorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/main.errorResponse'
+      summary: Create a new user
+      tags:
+      - Users
+securityDefinitions:
+  BasicAuth:
+    type: basic
+swagger: "2.0"

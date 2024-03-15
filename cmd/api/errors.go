@@ -5,6 +5,10 @@ import (
 	"net/http"
 )
 
+type errorResponse struct {
+	Error string `json:"error"`
+}
+
 func (app *application) logError(r *http.Request, status int, err error) {
 	app.logger.PrintError(err, map[string]string{
 		"status_code": fmt.Sprint(status),

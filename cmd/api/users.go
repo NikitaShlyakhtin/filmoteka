@@ -8,6 +8,26 @@ import (
 	"strings"
 )
 
+type UserEnvelope struct {
+	User data.User `json:"user"`
+}
+
+type CreateUserInput struct {
+	Name     string `json:"name" binding:"required"`
+	Password string `json:"password" binding:"required"`
+}
+
+// @Summary Create a new user
+// @Description Create a new user
+// @Tags Users
+// @Accept json
+// @Produce json
+// @Param input body CreateUserInput true "User data"
+// @Success 201 {object} UserEnvelope "User created successfully"
+// @Failure 400 {object} errorResponse "Bad request"
+// @Failure 422 {object} errorResponse "Validation failed"
+// @Failure 500 {object} errorResponse "Internal server error"
+// @Router /users [post]
 func (app *application) createUserHandler(w http.ResponseWriter, r *http.Request) {
 	var input struct {
 		Name     string `json:"name"`

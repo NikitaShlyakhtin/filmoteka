@@ -101,7 +101,7 @@ func (m ActorModel) Get(id int64) (*Actor, error) {
 		a.actor_id, a.full_name, a.gender, a.birth_date, json_agg(m.movie_id)
 	FROM
 		Actors a
-	JOIN
+	LEFT JOIN
 		Movies_actors m ON a.actor_id = m.actor_id
 	WHERE
 		a.actor_id = $1
@@ -133,6 +133,10 @@ func (m ActorModel) Get(id int64) (*Actor, error) {
 		return nil, err
 	}
 
+	if len(actor.Movies) == 1 && actor.Movies[0] == 0 {
+		actor.Movies = []int{}
+	}
+
 	return &actor, nil
 }
 
@@ -144,7 +148,7 @@ func (m ActorModel) GetAll() ([]Actor, error) {
 		a.actor_id, a.full_name, a.gender, a.birth_date, json_agg(m.movie_id)
 	FROM
 		Actors a
-	JOIN
+	LEFT JOIN
 		Movies_actors m ON a.actor_id = m.actor_id
 	GROUP BY
 		a.actor_id, a.full_name, a.gender, a.birth_date	
@@ -177,6 +181,10 @@ func (m ActorModel) GetAll() ([]Actor, error) {
 		err = json.Unmarshal(movies, &actor.Movies)
 		if err != nil {
 			return nil, err
+		}
+
+		if len(actor.Movies) == 1 && actor.Movies[0] == 0 {
+			actor.Movies = []int{}
 		}
 
 		actors = append(actors, actor)
