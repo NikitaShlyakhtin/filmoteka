@@ -1,6 +1,7 @@
 package main
 
 import (
+	"filmoteka/docs"
 	"net/http"
 
 	"github.com/julienschmidt/httprouter"
@@ -11,7 +12,7 @@ func (app *application) routes() http.Handler {
 	router := httprouter.New()
 
 	router.HandlerFunc(http.MethodGet, "/swagger/*filepath", httpSwagger.Handler(
-		httpSwagger.URL("http://localhost:4000/swagger/doc.json"), //The url pointing to API definition
+		httpSwagger.URL(docs.SwaggerInfo.Host+"/swagger/doc.json"), //The url pointing to API definition
 	))
 
 	router.NotFound = http.HandlerFunc(app.notFoundResponse)

@@ -44,7 +44,6 @@ type application struct {
 // @contact.url https://t.me/NikitaShlyakhtin
 // @contact.email nikitshliahtin@mail.ru
 
-// @host localhost:4000
 // @BasePath /
 // @SecurityDefinitions.basic BasicAuth
 func main() {
