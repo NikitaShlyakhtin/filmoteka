@@ -18,8 +18,20 @@ type Actor struct {
 	Movies    []int     `json:"movies"`
 }
 
-type ActorModel struct {
+type ActorModel interface {
+	Insert(actor *Actor) error
+	Delete(actor_id int64) error
+	Get(id int64) (*Actor, error)
+	GetAll() ([]Actor, error)
+	Update(actor *Actor) error
+}
+
+type ActorDB struct {
 	DB *sql.DB
+}
+
+type MockActorDB struct {
+	Actors map[int64]*Actor
 }
 
 var (
@@ -37,7 +49,7 @@ func ValidateActor(v *validator.Validator, actor *Actor) {
 	v.Check(actor.BirthDate.Before(time.Now()), "birth_date", "must be a valid date")
 }
 
-func (m ActorModel) Insert(actor *Actor) error {
+func (m ActorDB) Insert(actor *Actor) error {
 	query := `
 		INSERT INTO Actors (full_name, gender, birth_date)
 		VALUES ($1, $2, $3)
@@ -65,7 +77,7 @@ func (m ActorModel) Insert(actor *Actor) error {
 Удаляет актера и все его связи с фильмами из таблицы Movies_actors,
 но не удаляет сами фильмы из таблицы Movies.
 */
-func (m ActorModel) Delete(actor_id int64) error {
+func (m ActorDB) Delete(actor_id int64) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
@@ -93,7 +105,7 @@ func (m ActorModel) Delete(actor_id int64) error {
 	return nil
 }
 
-func (m ActorModel) Get(id int64) (*Actor, error) {
+func (m ActorDB) Get(id int64) (*Actor, error) {
 	var actor Actor
 
 	query := `
@@ -140,7 +152,7 @@ func (m ActorModel) Get(id int64) (*Actor, error) {
 	return &actor, nil
 }
 
-func (m ActorModel) GetAll() ([]Actor, error) {
+func (m ActorDB) GetAll() ([]Actor, error) {
 	var actors []Actor
 
 	query := `
@@ -197,7 +209,7 @@ func (m ActorModel) GetAll() ([]Actor, error) {
 	return actors, nil
 }
 
-func (m ActorModel) Update(actor *Actor) error {
+func (m ActorDB) Update(actor *Actor) error {
 	query := `
 		UPDATE 
 			Actors
@@ -230,6 +242,62 @@ func (m ActorModel) Update(actor *Actor) error {
 			return err
 		}
 	}
+
+	return nil
+}
+
+func (m *MockActorDB) Insert(actor *Actor) error {
+	if _, found := m.Actors[actor.ID]; found {
+		return ErrDuplicateName
+	}
+
+	m.Actors[actor.ID] = actor
+
+	return nil
+}
+
+func (m *MockActorDB) Get(id int64) (*Actor, error) {
+	actor, ok := m.Actors[id]
+
+	if !ok {
+		return nil, ErrRecordNotFound
+	}
+
+	return actor, nil
+}
+
+func (m *MockActorDB) GetAll() ([]Actor, error) {
+	var actors []Actor
+
+	for _, actor := range m.Actors {
+		actors = append(actors, *actor)
+	}
+
+	return actors, nil
+}
+
+func (m *MockActorDB) Update(actor *Actor) error {
+	if _, found := m.Actors[actor.ID]; !found {
+		return ErrRecordNotFound
+	}
+
+	for _, a := range m.Actors {
+		if a.FullName == actor.FullName && a.ID != actor.ID {
+			return ErrDuplicateName
+		}
+	}
+
+	m.Actors[actor.ID] = actor
+
+	return nil
+}
+
+func (m *MockActorDB) Delete(actor_id int64) error {
+	if _, found := m.Actors[actor_id]; !found {
+		return ErrRecordNotFound
+	}
+
+	delete(m.Actors, actor_id)
 
 	return nil
 }

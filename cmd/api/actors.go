@@ -123,7 +123,6 @@ func (app *application) updateActorHandler(w http.ResponseWriter, r *http.Reques
 		app.badRequestResponse(w, r, err)
 		return
 	}
-
 	actor, err := app.models.Actors.Get(id)
 	if err != nil {
 		switch {
@@ -136,15 +135,15 @@ func (app *application) updateActorHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	if input.FullName != nil {
+	if *input.FullName != "" {
 		actor.FullName = *input.FullName
 	}
 
-	if input.Gender != nil {
+	if *input.Gender != "" {
 		actor.Gender = strings.ToLower(*input.Gender)
 	}
 
-	if input.BirthDate != nil {
+	if !(*input.BirthDate).Equal(time.Time{}) {
 		actor.BirthDate = *input.BirthDate
 	}
 

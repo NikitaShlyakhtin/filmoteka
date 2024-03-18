@@ -13,7 +13,7 @@ import (
 var AnonymousUser = &User{}
 
 type User struct {
-	ID       int      `json:"id"`
+	ID       int64    `json:"id"`
 	Name     string   `json:"name"`
 	Password password `json:"-"`
 	Role     string   `json:"role"`
@@ -24,8 +24,17 @@ type password struct {
 	hash      []byte
 }
 
-type UserModel struct {
+type UserModel interface {
+	Insert(user *User) error
+	Get(username string) (*User, error)
+}
+
+type UserDB struct {
 	DB *sql.DB
+}
+
+type MockUserDB struct {
+	Users map[string]*User
 }
 
 func GeneratePasswordHash(plaintextPassword string) ([]byte, error) {
@@ -79,7 +88,7 @@ func ValidateUser(v *validator.Validator, user *User) {
 	}
 }
 
-func (m UserModel) Insert(user *User) error {
+func (m UserDB) Insert(user *User) error {
 	query := `
 		INSERT INTO users (username, password_hash, role)
 		VALUES ($1, $2, $3)
@@ -103,7 +112,7 @@ func (m UserModel) Insert(user *User) error {
 	return nil
 }
 
-func (m UserModel) Get(username string) (*User, error) {
+func (m UserDB) Get(username string) (*User, error) {
 	query := `
 		SELECT user_id, username, password_hash, role
 		FROM users
@@ -130,4 +139,24 @@ func (m UserModel) Get(username string) (*User, error) {
 
 func (u *User) IsAnonymous() bool {
 	return u == AnonymousUser
+}
+
+func (m *MockUserDB) Insert(user *User) error {
+	if _, found := m.Users[user.Name]; found {
+		return ErrDuplicateName
+	}
+
+	user.ID = int64(len(m.Users) + 1)
+	m.Users[user.Name] = user
+
+	return nil
+}
+
+func (m *MockUserDB) Get(username string) (*User, error) {
+	user, found := m.Users[username]
+	if !found {
+		return nil, ErrRecordNotFound
+	}
+
+	return user, nil
 }

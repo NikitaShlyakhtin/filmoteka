@@ -5,6 +5,7 @@ import (
 	"filmoteka/internal/data"
 	"filmoteka/internal/validator"
 	"net/http"
+	"time"
 )
 
 type MovieInput struct {
@@ -12,7 +13,7 @@ type MovieInput struct {
 	Description *string  `json:"description"`
 	ReleaseDate *string  `json:"release_date"` // RFC3339
 	Rating      *float32 `json:"rating"`
-	Actors      *[]int   `json:"actors"`
+	Actors      *[]int64 `json:"actors"`
 }
 
 type MovieEnvelope struct {
@@ -39,11 +40,11 @@ type MoviesEnvelope struct {
 // @Router /movies [post]
 func (app *application) addMovieHandler(w http.ResponseWriter, r *http.Request) {
 	var input struct {
-		Title       string  `json:"title"`
-		Description string  `json:"description"`
-		ReleaseDate string  `json:"release_date"` // RFC3339
-		Rating      float32 `json:"rating"`
-		Actors      []int   `json:"actors"`
+		Title       string    `json:"title"`
+		Description string    `json:"description"`
+		ReleaseDate time.Time `json:"release_date"` // RFC3339
+		Rating      float32   `json:"rating"`
+		Actors      []int64   `json:"actors"`
 	}
 
 	err := app.readJSON(w, r, &input)
@@ -112,11 +113,11 @@ func (app *application) updateMovieHandler(w http.ResponseWriter, r *http.Reques
 	}
 
 	var input struct {
-		Title       *string  `json:"title"`
-		Description *string  `json:"description"`
-		ReleaseDate *string  `json:"release_date"` // RFC3339
-		Rating      *float32 `json:"rating"`
-		Actors      []int    `json:"actors"`
+		Title       *string    `json:"title"`
+		Description *string    `json:"description"`
+		ReleaseDate *time.Time `json:"release_date"` // RFC3339
+		Rating      *float32   `json:"rating"`
+		Actors      []int64    `json:"actors"`
 	}
 
 	err = app.readJSON(w, r, &input)

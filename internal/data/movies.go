@@ -7,22 +7,37 @@ import (
 	"errors"
 	"filmoteka/internal/validator"
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 	"unicode/utf8"
 )
 
 type Movie struct {
-	ID          int     `json:"id"`
-	Title       string  `json:"title"`
-	Description string  `json:"description,omitempty"`
-	ReleaseDate string  `json:"release_date"` // RFC3339
-	Rating      float32 `json:"rating"`
-	Actors      []int   `json:"actors"`
+	ID          int64     `json:"id"`
+	Title       string    `json:"title"`
+	Description string    `json:"description,omitempty"`
+	ReleaseDate time.Time `json:"release_date"` // RFC3339
+	Rating      float32   `json:"rating"`
+	Actors      []int64   `json:"actors"`
 }
 
-type MovieModel struct {
+type MovieModel interface {
+	Insert(movie *Movie) error
+	Delete(id int64) error
+	GetAll(filters Filters) ([]*Movie, error)
+	Get(id int64) (*Movie, error)
+	Update(movie Movie) error
+	Search(title, actor string) ([]*Movie, error)
+}
+
+type MovieDB struct {
 	DB *sql.DB
+}
+
+type MockMovieDB struct {
+	Movies map[int64]*Movie
+	Actors map[int64]*Actor
 }
 
 var (
@@ -36,14 +51,14 @@ func ValidateMovie(v *validator.Validator, movie *Movie) {
 	v.Check(movie.Description != "", "description", "must be provided")
 	v.Check(utf8.RuneCountInString(movie.Description) < 1000, "description", "must be no more than 1000 symbols")
 
-	v.Check(movie.ReleaseDate != "", "release_date", "must be provided")
+	v.Check(movie.ReleaseDate != time.Time{}, "release_date", "must be provided")
 
 	v.Check(movie.Rating >= 0 && movie.Rating <= 10, "rating", "must be between 0 and 10")
 
 	v.Check(len(movie.Actors) >= 1, "actors", "must contain at least one actor")
 }
 
-func (m MovieModel) Insert(movie *Movie) error {
+func (m MovieDB) Insert(movie *Movie) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
@@ -88,7 +103,7 @@ func (m MovieModel) Insert(movie *Movie) error {
 	return nil
 }
 
-func (m MovieModel) Delete(id int64) error {
+func (m MovieDB) Delete(id int64) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
@@ -110,7 +125,7 @@ func (m MovieModel) Delete(id int64) error {
 	return nil
 }
 
-func (m MovieModel) GetAll(filters Filters) ([]*Movie, error) {
+func (m MovieDB) GetAll(filters Filters) ([]*Movie, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
@@ -150,7 +165,7 @@ func (m MovieModel) GetAll(filters Filters) ([]*Movie, error) {
 	return movies, nil
 }
 
-func (m MovieModel) Get(id int64) (*Movie, error) {
+func (m MovieDB) Get(id int64) (*Movie, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
@@ -204,7 +219,7 @@ func (m MovieModel) Get(id int64) (*Movie, error) {
 	return &movie, nil
 }
 
-func (m MovieModel) Update(movie Movie) error {
+func (m MovieDB) Update(movie Movie) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
@@ -264,7 +279,7 @@ func (m MovieModel) Update(movie Movie) error {
 	return nil
 }
 
-func (m MovieModel) Search(title, actor string) ([]*Movie, error) {
+func (m MovieDB) Search(title, actor string) ([]*Movie, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
@@ -379,7 +394,7 @@ func parseMoviesRows(rows *sql.Rows) ([]*Movie, error) {
 	return movies, nil
 }
 
-func checkActorsExistence(db *sql.DB, actors []int) error {
+func checkActorsExistence(db *sql.DB, actors []int64) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
@@ -416,4 +431,121 @@ func checkAffectedRows(result sql.Result) error {
 	}
 
 	return nil
+}
+
+func (m *MockMovieDB) Insert(movie *Movie) error {
+	for _, actorID := range movie.Actors {
+		if _, found := m.Actors[actorID]; !found {
+			return ErrActorsNotFound
+		}
+	}
+
+	if m.Movies == nil {
+		m.Movies = make(map[int64]*Movie)
+	}
+
+	for _, existingMovie := range m.Movies {
+		if existingMovie.Title == movie.Title {
+			return ErrDuplicateName
+		}
+	}
+
+	movie.ID = int64(len(m.Movies) + 1)
+	m.Movies[int64(movie.ID)] = movie
+
+	return nil
+}
+
+func (m *MockMovieDB) Delete(id int64) error {
+	_, found := m.Movies[id]
+	if !found {
+		return ErrRecordNotFound
+	}
+
+	delete(m.Movies, id)
+
+	return nil
+}
+
+func (m *MockMovieDB) GetAll(filters Filters) ([]*Movie, error) {
+	var movies []*Movie
+
+	for _, movie := range m.Movies {
+		movies = append(movies, movie)
+	}
+
+	switch filters.Sort {
+	case "title":
+		sort.SliceStable(movies, func(i, j int) bool {
+			return movies[i].Title < movies[j].Title
+		})
+	case "-title":
+		sort.SliceStable(movies, func(i, j int) bool {
+			return movies[i].Title > movies[j].Title
+		})
+	case "release_date":
+		sort.SliceStable(movies, func(i, j int) bool {
+			return movies[i].ReleaseDate.Before(movies[j].ReleaseDate)
+		})
+	case "-release_date":
+		sort.SliceStable(movies, func(i, j int) bool {
+			return movies[i].ReleaseDate.After(movies[j].ReleaseDate)
+		})
+	case "rating":
+		sort.SliceStable(movies, func(i, j int) bool {
+			return movies[i].Rating < movies[j].Rating
+		})
+	default:
+		sort.SliceStable(movies, func(i, j int) bool {
+			return movies[i].Rating > movies[j].Rating
+		})
+	}
+
+	return movies, nil
+}
+
+func (m *MockMovieDB) Get(id int64) (*Movie, error) {
+	movie, ok := m.Movies[id]
+
+	if !ok {
+		return nil, ErrRecordNotFound
+	}
+
+	return movie, nil
+}
+
+func (m *MockMovieDB) Update(movie Movie) error {
+	if _, found := m.Movies[movie.ID]; !found {
+		return ErrRecordNotFound
+	}
+
+	for _, actorID := range movie.Actors {
+		if _, found := m.Actors[actorID]; !found {
+			return ErrActorsNotFound
+		}
+	}
+
+	m.Movies[movie.ID] = &movie
+
+	return nil
+}
+
+func (m *MockMovieDB) Search(title, actor string) ([]*Movie, error) {
+	var movies []*Movie
+
+	for _, movie := range m.Movies {
+		if strings.Contains(movie.Title, title) {
+			movies = append(movies, movie)
+			continue
+		}
+
+		for _, actorID := range movie.Actors {
+			if strings.Contains(m.Actors[actorID].FullName, actor) {
+				movies = append(movies, movie)
+				break
+			}
+		}
+	}
+
+	return movies, nil
 }
