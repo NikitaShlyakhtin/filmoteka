@@ -323,6 +323,10 @@ func (m MovieDB) Search(title, actor string) ([]*Movie, error) {
 
 	rows.Close()
 
+	if len(moviesIDs) == 0 {
+		return []*Movie{}, nil
+	}
+
 	query = fmt.Sprintf(`
 		SELECT
 			m.movie_id,
