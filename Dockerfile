@@ -13,6 +13,6 @@ COPY . .
 
 RUN make build/api
 
-EXPOSE 8080
+EXPOSE 4000
 
 CMD ["./bin/api"]
