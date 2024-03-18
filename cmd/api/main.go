@@ -17,6 +17,7 @@ import (
 )
 
 type config struct {
+	ip      string
 	port    int
 	env     string
 	limiter struct {
@@ -49,6 +50,7 @@ type application struct {
 func main() {
 	var cfg config
 
+	flag.StringVar(&cfg.ip, "ip", "", "API server IP address")
 	flag.IntVar(&cfg.port, "port", 4000, "API server port")
 	flag.StringVar(&cfg.env, "env", "development", "Environment (development|staging|production)")
 

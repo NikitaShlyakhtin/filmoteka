@@ -1,0 +1,29 @@
+# docker-compose.yml
+version: '3'
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "${API_HOST_PORT}:${API_CONTAINER_PORT}"
+    command:
+      [
+        "sh",
+        "-c",
+        "./bin/api -db-dsn=${DB_DSN} -ip=${API_IP} -port=${API_HOST_PORT} -env=production"
+      ]
+    depends_on:
+      db:
+        condition: service_healthy
+  db:
+    build:
+      context: .
+      dockerfile: Dockerfile.db
+    ports:
+      - "${DB_HOST_PORT}:${DB_CONTAINER_PORT}"
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      interval: 1s
+      timeout: 5s
+      retries: 5

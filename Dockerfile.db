@@ -1,0 +1,13 @@
+# Dockerfile.db
+FROM postgres:latest
+
+WORKDIR /docker-entrypoint-initdb.d
+
+ENV POSTGRES_USER=postgres
+ENV POSTGRES_PASSWORD=1010
+ENV POSTGRES_DB=filmoteka
+
+COPY ./sql/tables.sql /docker-entrypoint-initdb.d/tables.sql
+COPY ./sql/testdata.sql /docker-entrypoint-initdb.d/testdata.sql
+
+EXPOSE 5432
